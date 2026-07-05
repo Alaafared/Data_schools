@@ -82,36 +82,43 @@
     margin-top:16px; line-height:1.8;
   }
 
-  /* Admin Selector (for super admins) */
-  #adminSelector{
+  /* Selectors */
+  .selector-screen{
     display:none; position:fixed; inset:0; z-index:9998;
     background:radial-gradient(ellipse at center, #163b4a, #0a1f29);
     align-items:center; justify-content:center; flex-direction:column;
-    padding:20px;
+    padding:20px; overflow:auto;
   }
   .selector-box{
-    width:100%; max-width:800px;
+    width:100%; max-width:900px;
     border:1.5px solid var(--cyan-soft); border-radius:var(--radius);
     background:linear-gradient(180deg, rgba(127,196,214,0.08), transparent);
     padding:30px;
   }
   .selector-box h2{
-    font-family:'Changa',sans-serif; font-size:22px; margin:0 0 20px;
+    font-family:'Changa',sans-serif; font-size:22px; margin:0 0 8px;
     color:#fdf9ef; text-align:center;
   }
-  .admin-grid{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+  .selector-sub{
+    text-align:center; color:var(--cyan-soft); font-size:14px; margin-bottom:20px;
+  }
+  .selector-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
     gap:12px;
   }
-  .admin-card{
+  .selector-card{
     border:1.5px solid var(--line); border-radius:var(--radius);
-    padding:18px; text-align:center; cursor:pointer;
-    background:rgba(255,255,255,0.03);
-    transition:.15s;
+    padding:20px; text-align:center; cursor:pointer;
+    background:rgba(255,255,255,0.03); transition:.15s;
   }
-  .admin-card:hover{border-color:var(--accent); background:rgba(201,121,31,0.1);}
-  .admin-card h4{margin:0 0 6px; font-family:'Changa'; font-size:16px; color:#fdf9ef;}
-  .admin-card p{margin:0; font-size:12px; color:var(--cyan-soft);}
+  .selector-card:hover{border-color:var(--accent); background:rgba(201,121,31,0.1);}
+  .selector-card h4{margin:0 0 6px; font-family:'Changa'; font-size:16px; color:#fdf9ef;}
+  .selector-card p{margin:0; font-size:12px; color:var(--cyan-soft);}
+  .back-btn{
+    background:transparent; border:1.5px solid var(--cyan-soft); color:var(--cyan);
+    padding:8px 18px; font-family:'Changa'; cursor:pointer; border-radius:var(--radius);
+    margin-top:20px; font-size:13px;
+  }
 
   /* User Management Panel */
   #userPanelBtn{
@@ -269,14 +276,20 @@
     padding:8px 14px; border-radius:var(--radius); font-size:12px;
     color:var(--cyan); font-family:'Changa'; display:none;
   }
+  .breadcrumb{
+    max-width:1180px; margin:0 auto; padding:0 20px 10px;
+    font-size:13px; color:var(--cyan-soft);
+  }
+  .breadcrumb span{color:var(--accent); font-weight:700;}
 
   @media (max-width:760px){
     .tb-grid{grid-template-columns:1fr;}
     .tb-side{border-left:none; border-top:1.5px solid rgba(127,196,214,0.3);}
     .info-grid{grid-template-columns:1fr;}
-    .admin-grid{grid-template-columns:1fr;}
+    .selector-grid{grid-template-columns:1fr;}
   }
 </style>
+<base target="_blank">
 <base target="_blank">
 </head>
 <body>
@@ -296,17 +309,28 @@
     <button class="login-btn" onclick="doLogin()">تسجيل الدخول</button>
     <div class="login-error" id="loginError"></div>
     <div class="login-hint">
-      <strong>للمسئولين العامين:</strong> يمكنهم اختيار أي إدارة<br>
-      <strong>للمسئولين المحليين:</strong> يتم توجيههم لإدارتهم مباشرة
+      <strong>للمسئولين العامين:</strong> يمكنهم اختيار أي إدارة وأي مدرسة<br>
+      <strong>للمسئولين المحليين:</strong> يتم توجيههم لمدارس إدارتهم
     </div>
   </div>
 </div>
 
-<!-- Administration Selector (Super Admins) -->
-<div id="adminSelector">
+<!-- Administration Selector (Super Admins only) -->
+<div id="adminSelector" class="selector-screen">
   <div class="selector-box">
     <h2>اختر الإدارة التعليمية</h2>
-    <div class="admin-grid" id="adminGrid"></div>
+    <p class="selector-sub">المسئول العام — يمكنك الوصول لجميع الإدارات</p>
+    <div class="selector-grid" id="adminGrid"></div>
+  </div>
+</div>
+
+<!-- School Selector (All users) -->
+<div id="schoolSelector" class="selector-screen">
+  <div class="selector-box">
+    <h2 id="schoolSelectorTitle">اختر المدرسة</h2>
+    <p class="selector-sub" id="schoolSelectorSub">—</p>
+    <div class="selector-grid" id="schoolGrid"></div>
+    <button class="back-btn" id="backBtn" onclick="goBack()" style="display:none;">← رجوع للإدارات</button>
   </div>
 </div>
 
@@ -321,7 +345,7 @@
       <input type="email" id="newUserEmail" placeholder="البريد الإلكتروني">
       <input type="password" id="newUserPass" placeholder="كلمة المرور">
       <select id="newUserRole">
-        <option value="admin">مسئول محلي (إدارة واحدة)</option>
+        <option value="admin">مسئول محلي (إدارة + مدرسة)</option>
         <option value="super_admin">مسئول عام (كل الإدارات)</option>
       </select>
       <select id="newUserAdmin">
@@ -358,6 +382,7 @@
         </div>
       </div>
     </div>
+    <div class="breadcrumb" id="breadcrumb">الإدارة: <span id="bcAdmin">—</span> &nbsp;|&nbsp; المدرسة: <span id="bcSchool">—</span></div>
     <nav id="tabs"></nav>
   </div>
 
@@ -372,7 +397,6 @@
 
 <script>
 /* ===================== FIREBASE CONFIG ===================== */
-// استبدل هذه القيم بقيم مشروعك من Firebase Console
 const firebaseConfig = {
     apiKey: "AIzaSyA0q7mWrvatHLdcfbiBiMAaqcRlQDZK2EQ",
     authDomain: "school-data-system-5ad91.firebaseapp.com",
@@ -397,6 +421,58 @@ const ADMINISTRATIONS = [
   "الإسماعيلية الجديدة",
   "الإسماعيلية القديمة"
 ];
+
+const SCHOOLS = {
+  "القنطرة شرق": [
+    "مدرسة الشهيد المقدم محمد عبدالاله صالح",
+    "مدرسة القنطرة شرق الثانوية الصناعية بنين",
+    "مدرسة القنطرة شرق الثانوية الصناعية بنات",
+    "مدرسة القنطرة شرق الإعدادية",
+    "مدرسة النصر الإعدادية"
+  ],
+  "القنطرة غرب": [
+    "مدرسة القنطرة غرب الثانوية الصناعية",
+    "مدرسة السلام الإعدادية",
+    "مدرسة المستقبل الإعدادية",
+    "مدرسة النهضة الثانوية",
+    "مدرسة التحرير الإعدادية"
+  ],
+  "فايد": [
+    "مدرسة فايد الثانوية الصناعية",
+    "مدرسة فايد الإعدادية المشتركة",
+    "مدرسة الأمل الثانوية",
+    "مدرسة العريش الإعدادية",
+    "مدرسة البلاحة الإعدادية"
+  ],
+  "التل الكبير": [
+    "مدرسة التل الكبير الثانوية الصناعية",
+    "مدرسة التل الكبير الإعدادية",
+    "مدرسة السادات الثانوية",
+    "مدرسة القبة الإعدادية",
+    "مدرسة أبو خليفة الإعدادية"
+  ],
+  "أبو صوير": [
+    "مدرسة أبو صوير الثانوية الصناعية",
+    "مدرسة أبو صوير الإعدادية",
+    "مدرسة السويس الثانوية",
+    "مدرسة الفردان الإعدادية",
+    "مدرسة الغريب الإعدادية"
+  ],
+  "الإسماعيلية الجديدة": [
+    "مدرسة الإسماعيلية الجديدة الثانوية الصناعية",
+    "مدرسة الإسماعيلية الجديدة الإعدادية",
+    "مدرسة الشروق الثانوية",
+    "مدرسة الضواحي الإعدادية",
+    "مدرسة الصفا الإعدادية"
+  ],
+  "الإسماعيلية القديمة": [
+    "مدرسة الإسماعيلية القديمة الثانوية الصناعية",
+    "مدرسة الإسماعيلية القديمة الإعدادية",
+    "مدرسة الثوار الثانوية",
+    "مدرسة الميدان الإعدادية",
+    "مدرسة الفيومي الإعدادية"
+  ]
+};
 
 const SPECIALTIES = ["فني تركيبات كهربية","فني الات كهربية","فني تبريد وتكييف الهواء","فني سيارات","فني صيانة وتحكم صناعي","فني صيانة ميكانيكية","فني كاتب حسابات","فني تأمينات","فني مبيعات","فني إنتاج حيوان","فني محاصيل حقلي","فني حاصلات بستانية","فني تصنيع غذائي","فني أعمال بناء","فني أعمال السقالات","فني أعمال الخرسانة المسلحة","فني إصلاح وصيانة السيارات","فني أعمال النجارة","فني شبكات المياه","فني أجهزة إلكترونية","فني الملابس الجاهزة","فني الديكورات والإعلان"];
 const SUBJECTS = ["اللغة العربية والتربية الدينية","اللغة الانجليزية","رياضيات","فيزياء","كيمياء","حاسب الي","دراسات اجتماعية","تربية وطنية","اللغة الفرنسية"];
@@ -481,6 +557,7 @@ const SECTIONS = [
 let currentUser = null;
 let userProfile = null;
 let currentAdministration = null;
+let currentSchool = null;
 let currentData = {};
 let listeners = [];
 let isSuperAdmin = false;
@@ -497,7 +574,10 @@ async function doLogin(){
   try{
     await auth.signInWithEmailAndPassword(email, pass);
   }catch(e){
-    showError(e.message.includes('user-not-found')||e.message.includes('wrong-password')?'بيانات الدخول غير صحيحة':e.message);
+    let msg = e.message;
+    if(msg.includes('user-not-found')||msg.includes('wrong-password')||msg.includes('invalid-credential')) msg='بيانات الدخول غير صحيحة';
+    else if(msg.includes('network')) msg='تأكد من اتصال الإنترنت';
+    showError(msg);
   }
 }
 
@@ -510,12 +590,12 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('mainApp').style.display = 'none';
     document.getElementById('adminSelector').style.display = 'none';
+    document.getElementById('schoolSelector').style.display = 'none';
     document.getElementById('userPanelBtn').style.display = 'none';
-    currentUser = null; userProfile = null; currentAdministration = null;
+    currentUser = null; userProfile = null; currentAdministration = null; currentSchool = null;
     return;
   }
   currentUser = user;
-  // fetch profile
   const snap = await db.collection('users').doc(user.uid).get();
   if(!snap.exists){
     showError('هذا المستخدم غير مسجل في النظام');
@@ -535,26 +615,63 @@ auth.onAuthStateChanged(async user => {
     if(!currentAdministration || !ADMINISTRATIONS.includes(currentAdministration)){
       showError('لم يتم تعيين إدارة لهذا المستخدم'); await auth.signOut(); return;
     }
-    startApp();
+    showSchoolSelector();
   }
 });
 
-/* ===================== ADMIN SELECTOR ===================== */
+/* ===================== SELECTORS ===================== */
 function showAdminSelector(){
   const grid = document.getElementById('adminGrid');
   grid.innerHTML = '';
   ADMINISTRATIONS.forEach(adm => {
     const card = document.createElement('div');
-    card.className = 'admin-card';
-    card.innerHTML = `<h4>${adm}</h4><p>اضغط لفتح بيانات الإدارة</p>`;
+    card.className = 'selector-card';
+    card.innerHTML = `<h4>${adm}</h4><p>5 مدارس — اضغط للاختيار</p>`;
     card.onclick = () => {
       currentAdministration = adm;
       document.getElementById('adminSelector').style.display = 'none';
-      startApp();
+      showSchoolSelector();
     };
     grid.appendChild(card);
   });
   document.getElementById('adminSelector').style.display = 'flex';
+}
+
+function showSchoolSelector(){
+  const sel = document.getElementById('schoolSelector');
+  const grid = document.getElementById('schoolGrid');
+  const title = document.getElementById('schoolSelectorTitle');
+  const sub = document.getElementById('schoolSelectorSub');
+  const back = document.getElementById('backBtn');
+
+  title.textContent = 'اختر المدرسة';
+  sub.textContent = 'الإدارة: ' + currentAdministration;
+  back.style.display = isSuperAdmin ? 'inline-block' : 'none';
+
+  grid.innerHTML = '';
+  const schools = SCHOOLS[currentAdministration] || [];
+  schools.forEach(sch => {
+    const card = document.createElement('div');
+    card.className = 'selector-card';
+    card.innerHTML = `<h4>${sch}</h4><p>اضغط لفتح البيانات</p>`;
+    card.onclick = () => {
+      currentSchool = sch;
+      sel.style.display = 'none';
+      startApp();
+    };
+    grid.appendChild(card);
+  });
+  sel.style.display = 'flex';
+}
+
+function goBack(){
+  document.getElementById('schoolSelector').style.display = 'none';
+  if(isSuperAdmin){
+    currentAdministration = null;
+    showAdminSelector();
+  } else {
+    doLogout();
+  }
 }
 
 /* ===================== USER MANAGEMENT ===================== */
@@ -591,9 +708,7 @@ async function addUser(){
   if(!name||!email||!pass){ alert('أكمل جميع الحقول'); return; }
   if(role==='admin' && !administration){ alert('اختر الإدارة للمسئول المحلي'); return; }
   try{
-    // Create user in Auth
     const cred = await firebase.auth().createUserWithEmailAndPassword(email, pass);
-    // Save profile
     await db.collection('users').doc(cred.user.uid).set({
       name, email, role, administration: role==='admin'?administration:null, createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -611,7 +726,6 @@ async function deleteUser(uid){
   loadUsers();
 }
 
-// Populate admin select
 const newUserAdmin = document.getElementById('newUserAdmin');
 ADMINISTRATIONS.forEach(a => {
   const o = document.createElement('option'); o.value=a; o.textContent=a; newUserAdmin.appendChild(o);
@@ -621,8 +735,11 @@ ADMINISTRATIONS.forEach(a => {
 function startApp(){
   document.getElementById('mainApp').style.display = 'block';
   document.getElementById('adminSelector').style.display = 'none';
+  document.getElementById('schoolSelector').style.display = 'none';
+  document.getElementById('bcAdmin').textContent = currentAdministration;
+  document.getElementById('bcSchool').textContent = currentSchool;
   buildTabs();
-  loadAdministrationData();
+  loadSchoolData();
 }
 
 function buildTabs(){
@@ -650,12 +767,16 @@ function switchTab(key){
 }
 
 /* ===================== FIRESTORE DATA ===================== */
-async function loadAdministrationData(){
-  // Show loading
+function getDocPath(){
+  // Path: schools/{administration}/schools/{schoolName}
+  return db.collection('schools').doc(currentAdministration).collection('schools').doc(currentSchool);
+}
+
+async function loadSchoolData(){
   const sync = document.getElementById('syncIndicator');
   sync.style.display = 'block'; sync.textContent = 'جاري تحميل البيانات...';
 
-  const docRef = db.collection('schools').doc(currentAdministration);
+  const docRef = getDocPath();
   const snap = await docRef.get();
 
   if(snap.exists){
@@ -667,7 +788,7 @@ async function loadAdministrationData(){
       if(sec.type==='info'){
         currentData[sec.key] = {
           quality:'تعليم صناعي', admin: currentAdministration,
-          schoolName:'الشهيد المقدم محمد عبدالاله صالح',
+          schoolName: currentSchool,
           address: currentAdministration + ' شارع المنطقة الصناعية',
           phone:'', manager:''
         };
@@ -677,6 +798,7 @@ async function loadAdministrationData(){
     });
     await docRef.set({
       administration: currentAdministration,
+      school: currentSchool,
       data: currentData,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: currentUser.email
@@ -724,7 +846,7 @@ async function saveSection(key, value){
   const sync = document.getElementById('syncIndicator');
   sync.style.display = 'block'; sync.textContent = 'جاري الحفظ...';
   currentData[key] = value;
-  await db.collection('schools').doc(currentAdministration).update({
+  await getDocPath().update({
     ['data.'+key]: value,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedBy: currentUser.email
@@ -751,7 +873,7 @@ function calcRowTotal(row, cols){
 }
 
 function updateTitleBlock(data){
-  if(data.schoolName) document.getElementById('schoolNameDisplay').textContent = 'مدرسة ' + data.schoolName;
+  if(data.schoolName) document.getElementById('schoolNameDisplay').textContent = data.schoolName;
   if(data.address || data.admin) document.getElementById('schoolAddrDisplay').textContent = `${data.address||''} — الإدارة التعليمية: ${data.admin||''}`;
   if(data.phone) document.getElementById('schoolPhoneDisplay').textContent = data.phone;
   if(data.manager) document.getElementById('schoolManagerDisplay').textContent = data.manager;
@@ -766,7 +888,7 @@ function renderInfo(sec){
   ];
   el.innerHTML = `
     <div class="sheet-head">
-      <div><h2>${sec.title || sec.label}</h2><p>البيانات الأساسية للمدرسة — ${currentAdministration}</p></div>
+      <div><h2>${sec.title || sec.label}</h2><p>البيانات الأساسية للمدرسة — ${currentSchool}</p></div>
       <div class="sheet-tools"><span class="save-state saved">محفوظ في السحابة</span></div>
     </div>
     <div class="sheet-body">
@@ -839,7 +961,7 @@ function renderTable(sec){
 
   el.innerHTML = `
     <div class="sheet-head">
-      <div><h2>${sec.title}</h2><p>${rows.length} صف — العمود الأخير محسوب تلقائيًا — ${currentAdministration}</p></div>
+      <div><h2>${sec.title}</h2><p>${rows.length} صف — العمود الأخير محسوب تلقائيًا — ${currentSchool}</p></div>
       <div class="sheet-tools"><span class="save-state saved">محفوظ في السحابة</span></div>
     </div>
     <div class="sheet-body">
@@ -865,7 +987,6 @@ function renderTable(sec){
 }
 
 /* ===================== INIT ===================== */
-// Enter key on login
 ['loginEmail','loginPassword'].forEach(id=>{
   document.getElementById(id).addEventListener('keypress', e=>{ if(e.key==='Enter') doLogin(); });
 });
